@@ -279,96 +279,6 @@ router.route('/watchlist/user/:user_id')
     })
   });
 
-/***********************************************************************************/
-/****************************** Searching Stock Tickers ****************************/
-/***********************************************************************************/
-
-// Allows server to work with a specific Watchlist
-router.route('/search/:search_string')
-
-  // Returns Stock Tickers matching the search string
-  .get(function(req, res) {
-
-    // The term that the user is searching for
-    // expected to be either a stock ticker or a company name
-    // formatted to lowercase for querying the database effectively
-    var searchString = req.params.search_string.toLowerCase();
-
-    // Allows the server to create promises so that the function doesn't return early
-    var promises = [];
-
-    // Promises to query database for matching stock tickers
-    promises[0] = searchForStockTicker(searchString);
-
-    // If the search string is a specific stock ticker,
-    // promises to find and return the stock data for that ticker 
-    promises[1] = getStockDataForSingleStock(searchString);
-
-    // Waits until both promises are fulfilled before continuing the function
-    Promise.all(promises).then(function(returnedData) {
-
-      // Getting the data from the returned promises
-      var returnedStockTickers = returnedData[0];
-      var returnedStockData = returnedData[1];
-
-      // Determines if the search term was a stock ticker
-      // if it was, then we should have been able to pull its
-      // stock data, if it wasn't the api call returned null
-      var exactMatch
-
-      if (returnedStockData.name == null) {
-
-        exactMatch = false
-
-        console.log(false);
-      } else {
-
-        exactMatch = true;
-      }
-
-      var response = {
-
-        exactMatchFound: exactMatch, 
-        stockData: returnedStockData,
-        stockTickers: returnedStockTickers
-      }
-
-      res.json(response);
-    });
-  });
-
-function searchForStockTicker (searchTerm) {
-
-  return new Promise(function(resolve, reject) {
-
-    // Sets up the paramaters for which watchlist the database should return
-    var query = StockTicker.find({ 'searchable': {$regex : ".*" + searchTerm + ".*"} });
-
-    // Only return the relevant fields
-    query.select('symbol name sector exchange');
-
-    // Only return 10 stock tickers
-    query.limit(10);
-
-    // execute the query at a later time
-    query.exec(function (error, stockTickers) {
-      if (error)
-        reject (error);
-
-      var numberOfMatches = stockTickers.length;
-
-      console.log('- Returned ' + numberOfMatches + ' matching stock ticker(s)');
-
-      resolve (stockTickers);
-    });
-  });
-}
-
-
-
-
-
-
 
 
 /************************************************************************************/
@@ -458,6 +368,67 @@ router.route('/stockportfolio-detailed')
         res.json(portfolioData);
       });
     });
+
+
+
+/***********************************************************************************/
+/****************************** Searching Stock Tickers ****************************/
+/***********************************************************************************/
+
+// Allows server to work with a specific Watchlist
+router.route('/search/:search_string')
+
+  // Returns Stock Tickers matching the search string
+  .get(function(req, res) {
+
+    // The term that the user is searching for
+    // expected to be either a stock ticker or a company name
+    // formatted to lowercase for querying the database effectively
+    var searchString = req.params.search_string.toLowerCase();
+
+    // Allows the server to create promises so that the function doesn't return early
+    var promises = [];
+
+    // Promises to query database for matching stock tickers
+    promises[0] = searchForStockTicker(searchString);
+
+    // If the search string is a specific stock ticker,
+    // promises to find and return the stock data for that ticker 
+    promises[1] = getStockDataForSingleStock(searchString);
+
+    // Waits until both promises are fulfilled before continuing the function
+    Promise.all(promises).then(function(returnedData) {
+
+      // Getting the data from the returned promises
+      var returnedStockTickers = returnedData[0];
+      var returnedStockData = returnedData[1];
+
+      // Determines if the search term was a stock ticker
+      // if it was, then we should have been able to pull its
+      // stock data, if it wasn't the api call returned null
+      var exactMatch
+
+      if (returnedStockData.name == null) {
+
+        exactMatch = false
+
+        console.log(false);
+      } else {
+
+        exactMatch = true;
+      }
+
+      var response = {
+
+        exactMatchFound: exactMatch, 
+        stockData: returnedStockData,
+        stockTickers: returnedStockTickers
+      }
+
+      res.json(response);
+    });
+  });
+
 
 
 
@@ -638,6 +609,7 @@ function getDetailedStockPortfolioData (arrayOfStockNames) {
 /*************************** Database Query functions ***********************************/
 /****************************************************************************************/
 
+// Creates a new watchlist in the database
 function createWatchlist (userId, watchlistName) {
 
   // The default starter watchlist
@@ -675,6 +647,34 @@ function createWatchlist (userId, watchlistName) {
         reject (error);
 
       resolve({ message: 'Watchlist created!' });
+    });
+  });
+}
+
+// Queries the database for stock tickers matching the users search term
+function searchForStockTicker (searchTerm) {
+
+  return new Promise(function(resolve, reject) {
+
+    // Sets up the paramaters for which watchlist the database should return
+    var query = StockTicker.find({ 'searchable': {$regex : ".*" + searchTerm + ".*"} });
+
+    // Only return the relevant fields
+    query.select('symbol name sector exchange');
+
+    // Only return 10 stock tickers
+    query.limit(10);
+
+    // execute the query at a later time
+    query.exec(function (error, stockTickers) {
+      if (error)
+        reject (error);
+
+      var numberOfMatches = stockTickers.length;
+
+      console.log('- Returned ' + numberOfMatches + ' matching stock ticker(s)');
+
+      resolve (stockTickers);
     });
   });
 }
