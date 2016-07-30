@@ -53,7 +53,7 @@ router.use(function(req, res, next) {
 
 // test route to make sure everything is working (accessed at GET http://localhost:8080/)
 router.get('/', function(req, res) {
-    res.json({ message: 'Welcome to the StockWolf api!!!' });   
+    res.json({ message: 'Welcome to the StockWolf api!' });   
 });
 
 
