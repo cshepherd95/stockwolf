@@ -380,29 +380,6 @@ router.route('/markets')
 
     .get(function(req, res) {
 
-      /*
-
-      Market Indexes:
-
-      U.S.:
-
-      S&P 500: ^GSPC
-      NASDAQ Composite: ^IXIC
-      NYSE Composite: ^NYA
-      Russell 2000: ^RUT
-
-      Europe:
-
-      FTSE 100: ^FTSE
-      DAX: ^GDAXI
-      CAC 40: ^FCHI
-
-      Asia:
-
-      Nikkei 225: ^N225
-      HANG SENG INDEX: ^HSI
-      */
-
       // Most of the most closely followed indexes in the world (notably missing Dow Jones)
       var marketIndexTickers = ["^GSPC", "^IXIC", "^NYA", "^RUT", "^FTSE", "^GDAXI", "^FCHI", "^N225", "^HSI"]
 
