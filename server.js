@@ -21,10 +21,15 @@ var config = require('./mongodb_config');
 var mongoose = require('mongoose');
 mongoose.connect(config.database);
 
-// Pulls in details of the database's data structure
-var User = require('./data_models/user'); // Allows server to work with the User object
-var Watchlist = require('./data_models/watchlist'); // Allows server to work with the Watchlist object
-var StockTicker = require('./data_models/stockticker'); // Allows server to work with the STockTicker object
+// Pulls in details of the database's data structure, 
+// allowing the server to work with relevant data objects
+var User = require('./data_models/user'); // User object
+var Watchlist = require('./data_models/watchlist'); // Watchlist object
+var StockTicker = require('./data_models/stockticker'); // StockTicker object
+var Portfolio = require('./data_models/portfolio'); // Portfolio object
+var Order = require('./data_models/order'); // Order object
+var PortfolioPosition = require('./data_models/portfolioposition') // PortfolioPosition object
+
 
 // Allows application to request JSON data from the web
 var request = require("request");
@@ -34,6 +39,25 @@ app.set('port', (process.env.PORT || 5000));
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });
+
+
+
+/*
+
+// Runs a recurring function
+
+var minutes = 1, the_interval = minutes * 60 * 1000;
+setInterval(function() {
+  console.log("I am doing my 1 minutes check");
+  // do your stuff here
+}, the_interval);
+*/
+
+
+
+
+
+
 
 
 // ROUTES FOR OUR API
@@ -431,6 +455,192 @@ router.route('/search/:search_string')
 
 
 
+/***********************************************************************************/
+/********************************** Portfolio data *********************************/
+/***********************************************************************************/
+
+// Allows the server to create and return Portfolios
+router.route('/portfolio')
+
+  // Create a portfolio for a specific user
+  .post(function(req, res) {
+
+    // The id of the User whos portfolio we want to find
+    userId = req.body.userId;
+
+    // The name of the Portfolio
+    var portfolioName = req.body.portfolioName;
+
+    // Sends a request to create a new portfolio that is associated with the userId given
+    createPortfolio(userId, portfolioName).then(function(response) {
+
+      console.log("- New Portfolio created")
+
+      res.json(response);
+    });
+  })
+
+  // Returns all Portfolios for every user
+  .get(function(req, res) {
+
+    Portfolio.find(function(err, portfolios) {
+      if (err)
+        res.send(err);
+
+      console.log('- Returned all Portfolios');
+
+      res.json(portfolios);
+    });
+  });
+
+// Allows server to work with a specific Portfolio
+router.route('/portfolio/:portfolio_id')
+
+  // Returns a single portfolio matching the given id
+  .get(function(req, res) {
+
+    Portfolio.findById(req.params.portfolio_id, function(err, portfolio) {
+      if (err)
+        res.send(err);
+
+      console.log('- Returned a single portfolio');
+
+      res.json(portfolio);
+    });
+  })
+
+// Allows server to work with the Portfolio associated with a single user
+router.route('/portfolio/user/:user_id')
+
+  // Returns all the portfolios associated with a single user
+  .get(function(req, res) {
+
+    // Sets up the paramaters for which portfolio the database should return
+    var query = Portfolio.find({ 'userId': req.params.user_id });
+
+    // execute the query at a later time
+    query.exec(function (err, portfolio) {
+      if (err)
+        res.send(err);
+
+      console.log('- Returned a single portfolio');
+
+      res.json(portfolio);
+    })
+  });
+
+
+
+/***********************************************************************************/
+/************************************ Order data ***********************************/
+/***********************************************************************************/
+
+// Allows server to work with a specific Portfolio
+router.route('/portfolio/place_order')
+
+  // Create an Order for a specific Portfolio
+  .post(function(req, res) {
+
+    console.log(req.body);
+
+    // The id of the Portfolio we want to find
+    var portfolioId = req.body.portfolioId;
+
+    // The details of the stock order
+    var companyName = req.body.companyName;
+    var ticker = req.body.ticker;
+    var numberOfShares = req.body.numberOfShares;
+    var purchasePrice = req.body.purchasePrice;
+
+    var orderType = req.body.orderType;
+
+
+    if (req.body.orderType == null) {
+
+      res.send("Error, order type not specified");
+
+    } else {
+
+      var orderType = orderType.toLowerCase()
+
+      if (orderType != "buy" && orderType != "sell") {
+
+        console.log("Order type invalid");
+        res.send("Error, order type not recognized");
+      }
+    }
+
+    // Sends a request to create a new portfolio that is associated with the userId given
+    createOrder(portfolioId, companyName, ticker, numberOfShares, purchasePrice, orderType).then(function(response) {
+
+      console.log("- New Order created")
+
+      res.json(response);
+    });
+  });
+
+// Allows server to work with the Portfolio associated with a single user
+router.route('/portfolio/get_orders')
+
+  // Returns all the portfolios associated with a single user
+  .post(function(req, res) {
+
+    // Sets up the paramaters for which portfolio the database should return
+    var query = Order.find({ 'portfolioId': req.body.portfolioId });
+
+    // execute the query at a later time
+    query.exec(function (err, orders) {
+      if (err)
+        res.send(err);
+
+      console.log('- Returned all Orders for a single portfolio');
+
+      res.json(orders);
+    })
+  });
+
+// Allows server to work with a specific Portfolio
+router.route('/portfolio/cancel_order')
+
+  // Removes a single Order matching the given id
+  .post(function(req, res) {
+
+    Order.findByIdAndRemove(req.body.orderId, function(err, order) {
+      if (err)
+        res.send(err);
+
+      console.log('- Removed a single Order');
+
+      res.json(order);
+    });
+  });
+
+
+
+/***********************************************************************************/
+/****************************** PortfolioPosition data *****************************/
+/***********************************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -609,7 +819,7 @@ function getDetailedStockPortfolioData (arrayOfStockNames) {
 /*************************** Database Query functions ***********************************/
 /****************************************************************************************/
 
-// Creates a new watchlist in the database
+// Creates a new Watchlist in the database
 function createWatchlist (userId, watchlistName) {
 
   // The default starter watchlist
@@ -634,7 +844,7 @@ function createWatchlist (userId, watchlistName) {
     watchlist.name = watchlistName; 
   }
 
-  // Sets the date that the user was created 
+  // Sets the date that the Watchlist was created 
   var date = Date();
   watchlist.createdOnDate = date;
 
@@ -647,6 +857,77 @@ function createWatchlist (userId, watchlistName) {
         reject (error);
 
       resolve({ message: 'Watchlist created!' });
+    });
+  });
+}
+
+// Creates a new Portfolio in the database
+function createPortfolio (userId, portfolioName) {
+
+  // Create a new instance of Portfolio
+  var portfolio = new Portfolio(); 
+
+  // Setting the default variables of a Portfolio
+  portfolio.userId = userId;
+  portfolio.initialPortfolioValue = 100000;
+  portfolio.cash = 100000;
+
+  // Sets the name of the Portfolio
+  if (portfolioName == null) {
+
+    // If no name is provided, a default name is given
+    portfolio.name = "Default Portfolio";
+
+  } else {
+
+    // Sets the Portfolio name equal to passed in parameter
+    portfolio.name = portfolioName; 
+  }
+
+  // Sets the date that the Portfolio was created 
+  var date = Date();
+  portfolio.createdOnDate = date;
+
+  // Creates the portfolio in the database
+  return new Promise(function(resolve, reject) {
+
+    // save the user and check for errors
+    portfolio.save(function(error) {
+      if (error)
+        reject (error);
+
+      resolve({ message: 'Portfolio created!' });
+    });
+  });
+}
+
+// Creates a new Order in the database
+function createOrder (portfolioId, companyName, ticker, numberOfShares, purchasePrice, orderType) {
+
+  // Create a new instance of Order
+  var order = new Order(); 
+
+  // Setting the details of the Order
+  order.portfolioId = portfolioId 
+  order.companyName = companyName
+  order.ticker = ticker
+  order.numberOfShares = numberOfShares
+  order.purchasePrice = purchasePrice
+  order.orderType = orderType
+
+  // Sets the date that the Order was placed 
+  var date = Date();
+  order.dateOrderPlaced = date;
+
+  // Creates the order in the database
+  return new Promise(function(resolve, reject) {
+
+    // save the user and check for errors
+    order.save(function(error) {
+      if (error)
+        reject (error);
+
+      resolve({ message: 'Order created!' });
     });
   });
 }
